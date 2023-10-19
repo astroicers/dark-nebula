@@ -1,0 +1,11 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: whois-recon-pocket
+spec:
+  entrypoint: whois
+  templates:
+  - name: whois
+    container:
+      image: astroicers/whois
+      args: ["google.com"]
