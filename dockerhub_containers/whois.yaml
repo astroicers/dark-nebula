@@ -1,0 +1,5 @@
+templates:
+  - name: whois
+    container:
+      image: astroicers/whois:latest
+      args: ["google.com"]

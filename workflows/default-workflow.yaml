@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: whois-recon-pocket
+  name: default-workflow
 spec:
   entrypoint: whois
   templates:
