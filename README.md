@@ -12,6 +12,8 @@ k3s-install.sh && argo-install.sh && docker-registry-install.sh
 argo-run.sh
 ```
 
+if workload crash, restatrt k3s service.
+
 ## Show pods
 
 ```

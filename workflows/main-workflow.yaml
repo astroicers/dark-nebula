@@ -4,6 +4,11 @@ metadata:
   name: main-workflow
 spec:
   entrypoint: main
+  arguments:
+    parameters:
+    - name: domain
+      value: "google.com"
+
   templates:
   - name: main
     steps:
@@ -14,4 +19,12 @@ spec:
         arguments:
           parameters:
           - name: domain
-            value: "google.com"
+            value: "{{workflow.parameters.domain}}"
+      - name: execute-subfinder
+        templateRef:
+          name: subfinder-template
+          template: subfinder
+        arguments:
+          parameters:
+          - name: domain
+            value: "{{workflow.parameters.domain}}"

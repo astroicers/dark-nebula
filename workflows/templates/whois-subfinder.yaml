@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: subfinder-template
+spec:
+  templates:
+  - name: subfinder
+    inputs:
+      parameters:
+      - name: domain
+    container:
+      image: astroicers/subfinder
+      command: ["subfinder"]
+      args: ["-silent","-d","{{inputs.parameters.domain}}"]
