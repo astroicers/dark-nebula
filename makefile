@@ -1,20 +1,21 @@
-.PHONY: install run show-pods build-container apply-workflow delete-workflow restart-k3s
+.PHONY: install uninstall docker-registry-install run show-pods build-container apply-workflow delete-workflow restart-k3s
 
 help:
 	@echo "Available commands:"
-	@echo "  make install         Install k3s, Argo"
-	@echo "  make docker-registry Install Docker registry"
-	@echo "  make run             Run Argo workflow"
-	@echo "  make show-pods       Show pods in the Argo namespace"
-	@echo "  make build-container Build and push Docker images"
-	@echo "  make apply-workflow  Apply Argo workflows"
-	@echo "  make delete-workflow Delete Argo workflows"
-	@echo "  make restart-k3s     Restart k3s service"
+	@echo "  make install               - Install k3s and Argo"
+	@echo "  make uninstall             - Uninstall k3s and Argo Workflow"
+	@echo "  make docker-registry-install - Install Docker registry"
+	@echo "  make run                   - Run Argo workflow"
+	@echo "  make show-pods             - Show pods in the Argo namespace"
+	@echo "  make build-container       - Build and push Docker images"
+	@echo "  make apply-workflow        - Apply Argo workflows"
+	@echo "  make delete-workflow       - Delete Argo workflows"
+	@echo "  make restart-k3s           - Restart k3s service"
 
 .DEFAULT_GOAL := help
 
 install:
-	# ./k3s-install.sh
+	# Install k3s
 	curl -sfL https://get.k3s.io | sh -
 	sudo k3s kubectl get node 
 	sudo groupadd k3s
@@ -22,29 +23,39 @@ install:
 	sudo chown `whoami`:k3s /etc/rancher/k3s/k3s.yaml
 	kubectl get pods
 
-	# ./argo-install.sh
+	# Install Argo Workflow
 	kubectl create namespace argo
-	kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.0/install.yaml
-	kubectl patch deployment \
-	argo-server \
-	--namespace argo \
-	--type='json' \
-	-p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args", "value": [
-	"server",
-	"--auth-mode=server"
-	]}]'
+	kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/install.yaml
+	kubectl patch deployment argo-server --namespace argo --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args", "value": ["server", "--auth-mode=server","--access-control-allow-origin=*"]}]'
 
-docker-registry:
-	# ./docker-registry-install.sh
-	sudo docker run -d -p 5000:5000 --name registry registry:2
-	echo 'mirrors:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-	echo '  "localhost:5000":' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-	echo '    endpoint:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-	echo '    - "http://localhost:5000"' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-	sudo systemctl restart k3s
+uninstall:
+	# Uninstall Argo Workflow
+	echo "Uninstalling Argo Workflow..."
+	kubectl delete namespace argo
+
+	# Uninstall k3s
+	echo "Uninstalling k3s..."
+	sudo /usr/local/bin/k3s-killall.sh
+	sudo /usr/local/bin/k3s-uninstall.sh
+
+	# Remove user and group
+	echo "Removing user and group..."
+	sudo gpasswd -d `whoami` k3s
+	sudo groupdel k3s
+
+	# Remove k3s related files
+	echo "Cleaning up k3s related files..."
+	sudo rm -rf /etc/rancher/k3s
+
+	echo "Uninstallation completed."
+
+docker-registry-install:
+	kubectl apply -f workflows/docker-registry/argo-role.yaml                
+	kubectl apply -f workflows/docker-registry/argo-rolebinding.yaml
+	kubectl create -f workflows/docker-registry/docker-registry-workflow.yaml
 
 run:
-	# ./argo-run.sh
+	# Run Argo Workflow
 	kubectl -n argo port-forward deployment/argo-server 2746:2746
 
 show-pods:
@@ -52,8 +63,8 @@ show-pods:
 
 build-container:
 	sudo docker build -t whois-local -f dockerfiles/whois.Dockerfile .
-	sudo docker tag whois-local localhost:5000/whois-local
-	sudo docker push localhost:5000/whois-local
+	sudo docker tag whois-local localhost:30000/whois-local
+	sudo docker push localhost:30000/whois-local
 
 apply-workflow:
 	for file in workflows/templates/*.yaml; do \
@@ -69,3 +80,13 @@ delete-workflow:
 
 restart-k3s:
 	sudo systemctl restart k3s
+
+
+# docker-registry:
+# 	# ./docker-registry-install.sh
+# 	sudo docker run -d -p 5000:5000 --name registry registry:2
+# 	echo 'mirrors:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
+# 	echo '  "localhost:5000":' | sudo tee -a /etc/rancher/k3s/k3s.yaml
+# 	echo '    endpoint:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
+# 	echo '    - "http://localhost:5000"' | sudo tee -a /etc/rancher/k3s/k3s.yaml
+# 	sudo systemctl restart k3s
