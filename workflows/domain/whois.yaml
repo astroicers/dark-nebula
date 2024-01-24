@@ -9,6 +9,6 @@ spec:
       parameters:
       - name: domain
     container:
-      image: localhost:5000/whois-local
+      image: localhost:30000/whois-local
       command: ["whois"]
       args: ["{{inputs.parameters.domain}}"]

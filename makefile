@@ -52,7 +52,7 @@ uninstall:
 docker-registry-install:
 	kubectl apply -f workflows/docker-registry/argo-role.yaml                
 	kubectl apply -f workflows/docker-registry/argo-rolebinding.yaml
-	kubectl create -f workflows/docker-registry/docker-registry-workflow.yaml
+	kubectl create -f workflows/docker-registry/docker-registry.yaml
 
 run:
 	# Run Argo Workflow
@@ -67,26 +67,16 @@ build-container:
 	sudo docker push localhost:30000/whois-local
 
 apply-workflow:
-	for file in workflows/templates/*.yaml; do \
-		kubectl -n argo apply -f "$$file"; \
+	for file in workflows/domain/*.yaml; do \
+		kubectl apply -f "$$file"; \
 	done
-	kubectl -n argo apply -f workflows/main-workflow.yaml
+	kubectl apply -f workflows/domain/domain.yaml
 
 delete-workflow:
-	for file in workflows/templates/*.yaml; do \
-		kubectl -n argo delete -f "$$file"; \
+	for file in workflows/domain/*.yaml; do \
+		kubectl delete -f "$$file"; \
 	done
-	kubectl -n argo delete -f workflows/main-workflow.yaml
+	kubectl delete -f workflows/domain/domain.yaml
 
 restart-k3s:
 	sudo systemctl restart k3s
-
-
-# docker-registry:
-# 	# ./docker-registry-install.sh
-# 	sudo docker run -d -p 5000:5000 --name registry registry:2
-# 	echo 'mirrors:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-# 	echo '  "localhost:5000":' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-# 	echo '    endpoint:' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-# 	echo '    - "http://localhost:5000"' | sudo tee -a /etc/rancher/k3s/k3s.yaml
-# 	sudo systemctl restart k3s

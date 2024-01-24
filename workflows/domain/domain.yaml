@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: main-workflow
+  name: dark-nebula-domain
 spec:
   entrypoint: main
   arguments:
