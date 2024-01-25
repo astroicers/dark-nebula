@@ -11,6 +11,7 @@ help:
 	@echo "  make apply-workflow        - Apply Argo workflows"
 	@echo "  make delete-workflow       - Delete Argo workflows"
 	@echo "  make restart-k3s           - Restart k3s service"
+	@echo "  make minio-install         - Install Minio"
 
 .DEFAULT_GOAL := help
 
@@ -62,21 +63,38 @@ show-pods:
 	kubectl -n argo get pods
 
 build-container:
-	sudo docker build -t whois-local -f dockerfiles/whois.Dockerfile .
-	sudo docker tag whois-local localhost:30000/whois-local
-	sudo docker push localhost:30000/whois-local
+	for file in dockerfiles/*.Dockerfile; do \
+		base_name=$$(basename $$file .Dockerfile); \
+		image_name="$$base_name-local"; \
+		sudo docker build -t $$image_name -f $$file .; \
+		sudo docker tag $$image_name localhost:30000/$$image_name; \
+		sudo docker push localhost:30000/$$image_name; \
+		done
 
 apply-workflow:
-	for file in workflows/domain/*.yaml; do \
+	for file in workflows/subdomain-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
 		kubectl apply -f "$$file"; \
-	done
-	kubectl apply -f workflows/domain/domain.yaml
+		fi; \
+		done
+	kubectl apply -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 delete-workflow:
-	for file in workflows/domain/*.yaml; do \
+	for file in workflows/subdomain-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
 		kubectl delete -f "$$file"; \
-	done
-	kubectl delete -f workflows/domain/domain.yaml
+		fi; \
+		done
+	kubectl delete -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 restart-k3s:
 	sudo systemctl restart k3s
+
+minio-install:
+	@export MINIO_ACCESS_KEY=$$(openssl rand -base64 12); \
+	export MINIO_SECRET_KEY=$$(openssl rand -base64 24); \
+	kubectl create secret generic minio-secret \
+		--from-literal=accesskey=$$MINIO_ACCESS_KEY \
+		--from-literal=secretkey=$$MINIO_SECRET_KEY; \
+	kubectl apply -f workflows/minio/minio-deployment.yaml; \
+	kubectl apply -f workflows/minio/minio-service.yaml

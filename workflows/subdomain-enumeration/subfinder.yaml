@@ -7,8 +7,8 @@ spec:
   - name: subfinder
     inputs:
       parameters:
-      - name: domain
+      - name: base-domain
     container:
       image: astroicers/subfinder
       command: ["subfinder"]
-      args: ["-silent","-d","{{inputs.parameters.domain}}"]
+      args: ["-silent","-d","{{inputs.parameters.base-domain}}"]

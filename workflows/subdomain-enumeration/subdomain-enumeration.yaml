@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: subdomain-enumeration
+spec:
+  entrypoint: enumerate-subdomains
+  arguments:
+    parameters:
+    - name: base-domain
+      value: "google.com"
+
+  templates:
+  - name: enumerate-subdomains
+    steps:
+    - - name: execute-subfinder
+        templateRef:
+          name: subfinder-template
+          template: subfinder
+        arguments:
+          parameters:
+          - name: base-domain
+            value: "{{workflow.parameters.base-domain}}"
+      - name: execute-assetfinder
+        templateRef:
+          name: assetfinder-template
+          template: assetfinder
+        arguments:
+          parameters:
+          - name: base-domain
+            value: "{{workflow.parameters.base-domain}}"
+      - name: execute-whois
+        templateRef:
+          name: whois-template
+          template: whois
+        arguments:
+          parameters:
+          - name: base-domain
+            value: "{{workflow.parameters.base-domain}}"

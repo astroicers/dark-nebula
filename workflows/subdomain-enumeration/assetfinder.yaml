@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: assetfinder-template
+spec:
+  templates:
+  - name: assetfinder
+    inputs:
+      parameters:
+      - name: base-domain
+    container:
+      image: localhost:30000/assetfinder-local
+      command: ["assetfinder"]
+      args: ["-subs-only","{{inputs.parameters.base-domain}}"]

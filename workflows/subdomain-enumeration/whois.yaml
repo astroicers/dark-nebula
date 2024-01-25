@@ -7,8 +7,8 @@ spec:
   - name: whois
     inputs:
       parameters:
-      - name: domain
+      - name: base-domain
     container:
       image: localhost:30000/whois-local
       command: ["whois"]
-      args: ["{{inputs.parameters.domain}}"]
+      args: ["{{inputs.parameters.base-domain}}"]

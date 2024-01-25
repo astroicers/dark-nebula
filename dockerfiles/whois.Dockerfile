@@ -1,5 +1,5 @@
 FROM alpine:3.15
 
-RUN apk add whois
+RUN apk add --no-cache whois
 
-ENTRYPOINT ["whois"]
+ENTRYPOINT ["/bin/sh"]
