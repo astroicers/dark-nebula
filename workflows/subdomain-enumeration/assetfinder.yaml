@@ -3,12 +3,29 @@ kind: WorkflowTemplate
 metadata:
   name: assetfinder-template
 spec:
+  volumes:
+    - name: output
+      emptyDir: {}
   templates:
-  - name: assetfinder
-    inputs:
-      parameters:
-      - name: base-domain
-    container:
-      image: localhost:30000/assetfinder-local
-      command: ["assetfinder"]
-      args: ["-subs-only","{{inputs.parameters.base-domain}}"]
+    - name: assetfinder
+      inputs:
+        parameters:
+        - name: base-domain
+      container:
+        image: localhost:30000/assetfinder-local
+        command: [sh, -c]
+        args: ["assetfinder -subs-only {{inputs.parameters.base-domain}} > /mnt/output/assetfinder.txt"]
+        volumeMounts:
+          - name: output
+            mountPath: /mnt/output
+
+    - name: assetfinder-uploader
+      script:
+        image: redis:7.2.4-alpine
+        command: [sh]
+        source: |
+          apk add --no-cache redis
+          redis-cli -h redis SET {{workflow.name}}-{{pod.name}}-$(date +%Y%m%d%H%M%S) "$(cat /mnt/output/assetfinder.txt)"
+        volumeMounts:
+          - name: output
+            mountPath: /mnt/output

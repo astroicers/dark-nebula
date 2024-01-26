@@ -90,6 +90,10 @@ delete-workflow:
 restart-k3s:
 	sudo systemctl restart k3s
 
+redis-install:
+	kubectl apply -f workflows/redis/redis-deployment.yaml
+	kubectl apply -f workflows/redis/redis-service.yaml
+
 minio-install:
 	@export MINIO_ACCESS_KEY=$$(openssl rand -base64 12); \
 	export MINIO_SECRET_KEY=$$(openssl rand -base64 24); \

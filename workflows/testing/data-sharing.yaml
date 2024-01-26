@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: data-sharing
+spec:
+  entrypoint: main
+  volumes:
+    - name: shared-data
+      persistentVolumeClaim:
+        claimName: shared-pvc
+
+  templates:
+    - name: main
+      steps:
+      - - name: generate-data
+          template: write-data
+      - - name: process-data
+          template: read-data
+
+    - name: write-data
+      container:
+        image: alpine:3.12
+        command: [sh, -c]
+        args: ["echo 'Hello from step 1' > /mnt/shared/output.txt"]
+        volumeMounts:
+          - name: shared-data
+            mountPath: /mnt/shared
+
+    - name: read-data
+      container:
+        image: alpine:3.12
+        command: [sh, -c]
+        args: ["cat /mnt/shared/output.txt"]
+        volumeMounts:
+          - name: shared-data
+            mountPath: /mnt/shared
