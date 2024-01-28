@@ -1,12 +1,13 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: subdomain-enumeration
+  generateName: subdomain-enumeration-
 spec:
   entrypoint: main
   volumes:
-    - name: output
-      emptyDir: {}
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
   arguments:
     parameters:
       - name: base-domain
@@ -39,7 +40,3 @@ spec:
               parameters:
                 - name: base-domain
                   value: "{{workflow.parameters.base-domain}}"
-        - - name: assetfinder-uploader
-            templateRef:
-              name: assetfinder-template
-              template: assetfinder-uploader

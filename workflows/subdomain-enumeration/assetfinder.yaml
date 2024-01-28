@@ -4,28 +4,41 @@ metadata:
   name: assetfinder-template
 spec:
   volumes:
-    - name: output
-      emptyDir: {}
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
   templates:
     - name: assetfinder
       inputs:
         parameters:
-        - name: base-domain
+          - name: base-domain
+      steps:
+        - - name: run-assetfinder-self
+            template: assetfinder-self
+            arguments:
+              parameters:
+                - name: base-domain
+                  value: "{{inputs.parameters.base-domain}}"
+        - - name: run-assetfinder-uploader
+            template: assetfinder-uploader
+
+    - name: assetfinder-self
+      inputs:
+        parameters:
+          - name: base-domain
       container:
         image: localhost:30000/assetfinder-local
         command: [sh, -c]
         args: ["assetfinder -subs-only {{inputs.parameters.base-domain}} > /mnt/output/assetfinder.txt"]
         volumeMounts:
-          - name: output
+          - name: shared-output
             mountPath: /mnt/output
 
     - name: assetfinder-uploader
-      script:
+      container:
         image: redis:7.2.4-alpine
-        command: [sh]
-        source: |
-          apk add --no-cache redis
-          redis-cli -h redis SET {{workflow.name}}-{{pod.name}}-$(date +%Y%m%d%H%M%S) "$(cat /mnt/output/assetfinder.txt)"
+        command: [sh, -c]
+        args: ["redis-cli -h redis SET {{workflow.name}}-{{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/assetfinder.txt)\""]
         volumeMounts:
-          - name: output
+          - name: shared-output
             mountPath: /mnt/output

@@ -1,36 +1,31 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  name: data-sharing
+  generateName: container-set-template-
 spec:
   entrypoint: main
-  volumes:
-    - name: shared-data
-      persistentVolumeClaim:
-        claimName: shared-pvc
+  volumes:  # 在這裡定義 'workdir' 卷
+    - name: workdir
+      emptyDir: {}
 
   templates:
     - name: main
       steps:
-      - - name: generate-data
-          template: write-data
-      - - name: process-data
-          template: read-data
+        - - name: use-container-set
+            template: container-set
 
-    - name: write-data
-      container:
-        image: alpine:3.12
-        command: [sh, -c]
-        args: ["echo 'Hello from step 1' > /mnt/shared/output.txt"]
+    - name: container-set
+      containerSet:
         volumeMounts:
-          - name: shared-data
-            mountPath: /mnt/shared
+          - name: workdir
+            mountPath: /mnt/output
+        containers:
+          - name: generate-data
+            image: localhost:30000/assetfinder-local
+            command: [sh, -c]
+            args: ["assetfinder -subs-only google.com > /mnt/output/assetfinder.txt"]
 
-    - name: read-data
-      container:
-        image: alpine:3.12
-        command: [sh, -c]
-        args: ["cat /mnt/shared/output.txt"]
-        volumeMounts:
-          - name: shared-data
-            mountPath: /mnt/shared
+          - name: process-data
+            image: redis:7.2.4-alpine
+            command: [sh, -c]
+            args: ["redis-cli -h redis SET {{workflow.name}}-{{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/assetfinder.txt)\""]

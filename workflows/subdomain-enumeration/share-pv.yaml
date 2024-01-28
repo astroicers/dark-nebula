@@ -6,6 +6,8 @@ spec:
   capacity:
     storage: 1Gi
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
   hostPath:
-    path: /path/on/host
+    path: /mnt/output

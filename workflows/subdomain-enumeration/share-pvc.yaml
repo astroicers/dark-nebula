@@ -4,7 +4,8 @@ metadata:
   name: shared-pvc
 spec:
   accessModes:
-    - ReadWriteMany
+    - ReadWriteOnce
+  storageClassName: manual
   resources:
     requests:
       storage: 1Gi

@@ -1,4 +1,4 @@
-.PHONY: install uninstall docker-registry-install run show-pods build-container apply-workflow delete-workflow restart-k3s
+.PHONY: install uninstall docker-registry-install run show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install
 
 help:
 	@echo "Available commands:"
@@ -11,6 +11,8 @@ help:
 	@echo "  make apply-workflow        - Apply Argo workflows"
 	@echo "  make delete-workflow       - Delete Argo workflows"
 	@echo "  make restart-k3s           - Restart k3s service"
+	@echo "  make redis-install         - Install Redis"
+	@echo "  make redisinsight-install  - Install RedisInsight"
 	@echo "  make minio-install         - Install Minio"
 
 .DEFAULT_GOAL := help
@@ -77,7 +79,7 @@ apply-workflow:
 		kubectl apply -f "$$file"; \
 		fi; \
 		done
-	kubectl apply -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
+	kubectl create -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 delete-workflow:
 	for file in workflows/subdomain-enumeration/*.yaml; do \
@@ -93,6 +95,10 @@ restart-k3s:
 redis-install:
 	kubectl apply -f workflows/redis/redis-deployment.yaml
 	kubectl apply -f workflows/redis/redis-service.yaml
+
+redisinsight-install:
+	kubectl apply -f workflows/redisinsight/redisinsight-deployment.yaml
+	kubectl apply -f workflows/redisinsight/redisinsight-service.yaml
 
 minio-install:
 	@export MINIO_ACCESS_KEY=$$(openssl rand -base64 12); \

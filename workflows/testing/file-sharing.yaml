@@ -1,0 +1,38 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: file-sharing-workflow-
+spec:
+  entrypoint: main
+
+  templates:
+    - name: main
+      steps:
+        - - name: generate-data
+            template: write-data
+        - - name: process-data
+            template: read-data
+            arguments:
+              artifacts:
+                - name: data-file
+                  from: "{{steps.generate-data.outputs.artifacts.output-file}}"
+
+    - name: write-data
+      container:
+        image: alpine
+        command: [sh, -c]
+        args: ["echo 'Hello from write-data' > /tmp/data.txt"]
+      outputs:
+        artifacts:
+          - name: output-file
+            path: /tmp/data.txt
+
+    - name: read-data
+      inputs:
+        artifacts:
+          - name: data-file
+            path: /tmp/data.txt
+      container:
+        image: alpine
+        command: [cat]
+        args: ["/tmp/data.txt"]
