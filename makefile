@@ -82,6 +82,7 @@ apply-workflow:
 	kubectl create -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 delete-workflow:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/subdomain-enumeration/*.yaml; do \
 		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
 		kubectl delete -f "$$file"; \

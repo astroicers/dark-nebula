@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: subdomain-enumeration-combiner-template
+spec:
+  templates:
+    - name: subdomain-enumeration-combiner
+      script:
+        image: astroicers/dark-nebula-uploader
+        command: [python]
+        source: |
+          import redis
+          import json
+          from datetime import datetime
+
+          workflow_name = '{{workflow.name}}'
+
+          r = redis.Redis(host='redis', port=6379, db=0)
+          
+          assetfinder_json_str = ''
+          subfinder_json_str = ''
+          crt_sh_json_str = ''
+
+          assetfinder_keys = r.scan_iter(f'{workflow_name}-assetfinder*')
+          for key in assetfinder_keys:
+              assetfinder_json_str = r.get(key)
+          subfinder_keys = r.scan_iter(f'{workflow_name}-subfinder*')
+          for key in subfinder_keys:
+              subfinder_json_str = r.get(key)
+          crt_sh_keys = r.scan_iter(f'{workflow_name}-crt-sh*')
+          for key in crt_sh_keys:
+              crt_sh_json_str = r.get(key)
+
+          assetfinder_data = json.loads(assetfinder_json_str) if assetfinder_json_str else {}
+          subfinder_data = json.loads(subfinder_json_str) if subfinder_json_str else {}
+          crt_sh_data = json.loads(crt_sh_json_str) if crt_sh_json_str else {}
+          
+          combined_data = {
+            'timestamp': datetime.now().strftime("%Y%m%d%H%M%S"),
+            'workflow': '{{workflow.name}}',
+            'pod': '{{pod.name}}',
+            'type': 'subdomain-enumeration',
+            'output': {
+              'assetfinder': assetfinder_data,
+              'subfinder': subfinder_data,
+              'crt-sh': crt_sh_data
+            }
+          }
+
+          combined_json_str = json.dumps(combined_data)
+
+          r.set(f'{workflow_name}-combiner', combined_json_str)

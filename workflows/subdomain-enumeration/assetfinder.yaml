@@ -19,8 +19,14 @@ spec:
               parameters:
                 - name: base-domain
                   value: "{{inputs.parameters.base-domain}}"
+        - - name: run-assetfinder-parser
+            template: assetfinder-parser
         - - name: run-assetfinder-uploader
             template: assetfinder-uploader
+            arguments:
+              parameters:
+                - name: base-domain
+                  value: "{{inputs.parameters.base-domain}}"
 
     - name: assetfinder-self
       inputs:
@@ -34,11 +40,77 @@ spec:
           - name: shared-output
             mountPath: /mnt/output
 
+    - name: assetfinder-parser
+      script:
+        image: python:3.12.1-alpine3.19
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+        command: [python]
+        source: |
+          import re
+          import json
+
+          def extract_domains(file_path):
+              with open(file_path, 'r') as file:
+                  content = file.read()
+                  pattern = r'\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}\b'
+                  return set(re.findall(pattern, content, re.IGNORECASE))
+
+          def save_domains_as_json(domains, output_file_path):
+              with open(output_file_path, 'w') as file:
+                  json_data = {"domains": list(domains)}
+                  json.dump(json_data, file, indent=4)
+
+          def main():
+              input_file_path = '/mnt/output/assetfinder.txt'
+              output_file_path = '/mnt/output/assetfinder-parsed.json'
+              domains = extract_domains(input_file_path)
+              save_domains_as_json(domains, output_file_path)
+
+          if __name__ == "__main__":
+              main()
+
+
+    # - name: assetfinder-uploader
+    #   container:
+    #     image: redis:7.2.4-alpine
+    #     command: [sh, -c]
+    #     args: ["redis-cli -h redis SET {{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/assetfinder-parsed.json)\""]
+    #     volumeMounts:
+    #       - name: shared-output
+    #         mountPath: /mnt/output
     - name: assetfinder-uploader
-      container:
-        image: redis:7.2.4-alpine
-        command: [sh, -c]
-        args: ["redis-cli -h redis SET {{workflow.name}}-{{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/assetfinder.txt)\""]
+      inputs:
+        parameters:
+          - name: base-domain
+      script:
+        image: astroicers/dark-nebula-uploader
+        command: [python]
+        source: |
+          import redis
+          import json
+          from datetime import datetime
+
+          r = redis.Redis(host='redis', port=6379, db=0)
+
+          with open('/mnt/output/subfinder-parsed.json', 'r') as file:
+              json_str = file.read()
+
+          file_content = json.loads(json_str)
+          key_name = "{{pod.name}}"
+          
+          file_content['timestamp'] = datetime.now().strftime("%Y%m%d%H%M%S")
+          file_content['workflow'] = "{{workflow.name}}"
+          file_content['pod'] = "{{pod.name}}"
+          file_content['input'] = "{{inputs.parameters.base-domain}}"
+          file_content['tool'] = "assetfinder"
+          file_content['type'] = "subdomain-enumeration"
+          file_content['output'] = file_content['domains']
+          del file_content['domains']
+          json_str_updated = json.dumps(file_content)
+
+          r.set(key_name, json_str_updated)
         volumeMounts:
           - name: shared-output
             mountPath: /mnt/output

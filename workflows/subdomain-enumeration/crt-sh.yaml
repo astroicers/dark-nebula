@@ -1,46 +1,52 @@
 apiVersion: argoproj.io/v1alpha1
 kind: WorkflowTemplate
 metadata:
-  name: subfinder-template
+  name: crt-sh-template
 spec:
   volumes:
     - name: shared-output
       persistentVolumeClaim:
         claimName: shared-pvc
   templates:
-    - name: subfinder
+    - name: crt-sh
       inputs:
         parameters:
           - name: base-domain
       steps:
-        - - name: run-subfinder-self
-            template: subfinder-self
+        - - name: run-crt-sh-self
+            template: crt-sh-self
             arguments:
               parameters:
                 - name: base-domain
                   value: "{{inputs.parameters.base-domain}}"
-        - - name: run-subfinder-parser
-            template: subfinder-parser
-        - - name: run-subfinder-uploader
-            template: subfinder-uploader
+        - - name: run-crt-sh-parser
+            template: crt-sh-parser
+        - - name: run-crt-sh-uploader
+            template: crt-sh-uploader
             arguments:
               parameters:
                 - name: base-domain
                   value: "{{inputs.parameters.base-domain}}"
-      
-    - name: subfinder-self
+
+    - name: crt-sh-self
       inputs:
         parameters:
-        - name: base-domain
-      container:
-        image: astroicers/subfinder
-        command: [sh, -c]
-        args: ["subfinder -silent -d {{inputs.parameters.base-domain}} > /mnt/output/subfinder.txt"]
+          - name: base-domain
+      script:
+        image: curlimages/curl:8.5.0
         volumeMounts:
           - name: shared-output
             mountPath: /mnt/output
+        securityContext:
+          runAsUser: 0
+        command: [sh]
+        source: |
+          set -e
+          DOMAIN="{{inputs.parameters.base-domain}}"
+          curl https://crt.sh/?q=${DOMAIN} | grep "${DOMAIN}" | grep "<TD>" | sed -e 's/<TD>//' | sed -e 's/<\/TD>//' | sed '$!N; /^\(.*\)\n\1$/!P; D' | sed 's/^[ \t]*//g' | sed -e 's/<BR>/\n/g' > /tmp/crt_sh.txt
+          mv /tmp/crt_sh.txt /mnt/output/crt-sh.txt
 
-    - name: subfinder-parser
+    - name: crt-sh-parser
       script:
         image: python:3.12.1-alpine3.19
         volumeMounts:
@@ -63,15 +69,25 @@ spec:
                   json.dump(json_data, file, indent=4)
 
           def main():
-              input_file_path = '/mnt/output/subfinder.txt'
-              output_file_path = '/mnt/output/subfinder-parsed.json'
+              input_file_path = '/mnt/output/crt-sh.txt'
+              output_file_path = '/mnt/output/crt-sh-parsed.json'
               domains = extract_domains(input_file_path)
               save_domains_as_json(domains, output_file_path)
 
           if __name__ == "__main__":
               main()
-      
-    - name: subfinder-uploader
+
+
+    # - name: crt-sh-uploader
+    #   container:
+    #     image: redis:7.2.4-alpine
+    #     command: [sh, -c]
+    #     args: ["redis-cli -h redis SET {{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/crt-sh-parsed.json)\""]
+    #     volumeMounts:
+    #       - name: shared-output
+    #         mountPath: /mnt/output
+
+    - name: crt-sh-uploader
       inputs:
         parameters:
           - name: base-domain
@@ -95,7 +111,7 @@ spec:
           file_content['workflow'] = "{{workflow.name}}"
           file_content['pod'] = "{{pod.name}}"
           file_content['input'] = "{{inputs.parameters.base-domain}}"
-          file_content['tool'] = "subfinder"
+          file_content['tool'] = "crt-sh"
           file_content['type'] = "subdomain-enumeration"
           file_content['output'] = file_content['domains']
           del file_content['domains']

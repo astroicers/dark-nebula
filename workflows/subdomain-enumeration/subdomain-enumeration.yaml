@@ -11,7 +11,7 @@ spec:
   arguments:
     parameters:
       - name: base-domain
-        value: "google.com"
+        value: "ecloudvalley.com"
 
   templates:
     - name: main
@@ -32,11 +32,15 @@ spec:
               parameters:
                 - name: base-domain
                   value: "{{workflow.parameters.base-domain}}"
-          - name: execute-whois
+          - name: execute-crt-sh
             templateRef:
-              name: whois-template
-              template: whois
+              name: crt-sh-template
+              template: crt-sh
             arguments:
               parameters:
                 - name: base-domain
                   value: "{{workflow.parameters.base-domain}}"
+        - - name: subdomain-enumeration-combiner
+            templateRef:
+              name: subdomain-enumeration-combiner-template
+              template: subdomain-enumeration-combiner
