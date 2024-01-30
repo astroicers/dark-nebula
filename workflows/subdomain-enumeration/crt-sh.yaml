@@ -101,7 +101,7 @@ spec:
 
           r = redis.Redis(host='redis', port=6379, db=0)
 
-          with open('/mnt/output/subfinder-parsed.json', 'r') as file:
+          with open('/mnt/output/crt-sh-parsed.json', 'r') as file:
               json_str = file.read()
 
           file_content = json.loads(json_str)
@@ -113,7 +113,8 @@ spec:
           file_content['input'] = "{{inputs.parameters.base-domain}}"
           file_content['tool'] = "crt-sh"
           file_content['type'] = "subdomain-enumeration"
-          file_content['output'] = file_content['domains']
+          file_content['output'] = {}
+          file_content['output']['domains'] = file_content['domains']
           del file_content['domains']
           json_str_updated = json.dumps(file_content)
 
