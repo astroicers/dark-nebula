@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check 
 
 help:
 	@echo "Available commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make redis-install         - Installs Redis"
 	@echo "  make redisinsight-install  - Installs RedisInsight"
 	@echo "  make minio-install         - Installs Minio"
+	@echo "  make website-install       - Installs website"
 	@echo "  make apply-share-volume    - Applies shared volume configuration"
 	@echo "  make delete-share-volume   - Deletes shared volume configuration"
 	@echo "  make apply-subdomain-enumeration - Applies subdomain enumeration workflow"
@@ -22,7 +23,7 @@ help:
 
 .DEFAULT_GOAL := help
 
-install: k3s-install argo-workflow-install docker-registry-install redis-install redisinsight-install minio-install apply-share-volume
+install: k3s-install argo-workflow-install docker-registry-install redis-install redisinsight-install minio-install website-install apply-share-volume
 
 uninstall:
 	# Uninstall Argo Workflow
@@ -100,6 +101,12 @@ minio-install:
 		--from-literal=secretkey=$$MINIO_SECRET_KEY; \
 	kubectl apply -f workflows/minio/minio-deployment.yaml; \
 	kubectl apply -f workflows/minio/minio-service.yaml
+
+website-install:
+	kubectl apply -f workflows/website/frontend-deployment.yaml
+	kubectl apply -f workflows/website/frontend-service.yaml
+	kubectl apply -f workflows/website/backend-deployment.yaml
+	kubectl apply -f workflows/website/backend-service.yaml
 
 apply-share-volume:
 	kubectl apply -f workflows/share-volume/share-pv.yaml
