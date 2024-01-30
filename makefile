@@ -1,35 +1,28 @@
-.PHONY: install uninstall docker-registry-install run show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check
 
 help:
 	@echo "Available commands:"
-	@echo "  make install               - Install k3s and Argo"
-	@echo "  make uninstall             - Uninstall k3s and Argo Workflow"
-	@echo "  make docker-registry-install - Install Docker registry"
-	@echo "  make run                   - Run Argo workflow"
-	@echo "  make show-pods             - Show pods in the Argo namespace"
-	@echo "  make build-container       - Build and push Docker images"
-	@echo "  make apply-workflow        - Apply Argo workflows"
-	@echo "  make delete-workflow       - Delete Argo workflows"
-	@echo "  make restart-k3s           - Restart k3s service"
-	@echo "  make redis-install         - Install Redis"
-	@echo "  make redisinsight-install  - Install RedisInsight"
-	@echo "  make minio-install         - Install Minio"
+	@echo "  make install               - Installs k3s, Argo, Docker registry, Redis, RedisInsight, and Minio"
+	@echo "  make uninstall             - Uninstalls k3s and Argo Workflow"
+	@echo "  make docker-registry-install - Installs Docker registry"
+	@echo "  make run-argo-workflow     - Runs Argo workflow"
+	@echo "  make show-pods             - Displays pods in the Argo namespace"
+	@echo "  make build-container       - Builds and pushes Docker images"
+	@echo "  make restart-k3s           - Restarts k3s service"
+	@echo "  make redis-install         - Installs Redis"
+	@echo "  make redisinsight-install  - Installs RedisInsight"
+	@echo "  make minio-install         - Installs Minio"
+	@echo "  make apply-share-volume    - Applies shared volume configuration"
+	@echo "  make delete-share-volume   - Deletes shared volume configuration"
+	@echo "  make apply-subdomain-enumeration - Applies subdomain enumeration workflow"
+	@echo "  make delete-subdomain-enumeration - Deletes subdomain enumeration workflow"
+	@echo "  make apply-subdomain-ping-check - Applies subdomain ping check workflow"
+	@echo "  make delete-subdomain-ping-check - Deletes subdomain ping check workflow"
+
 
 .DEFAULT_GOAL := help
 
-install:
-	# Install k3s
-	curl -sfL https://get.k3s.io | sh -
-	sudo k3s kubectl get node 
-	sudo groupadd k3s
-	sudo usermod -aG k3s `whoami`
-	sudo chown `whoami`:k3s /etc/rancher/k3s/k3s.yaml
-	kubectl get pods
-
-	# Install Argo Workflow
-	kubectl create namespace argo
-	kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/install.yaml
-	kubectl patch deployment argo-server --namespace argo --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args", "value": ["server", "--auth-mode=server","--access-control-allow-origin=*"]}]'
+install: k3s-install argo-workflow-install docker-registry-install redis-install redisinsight-install minio-install apply-share-volume
 
 uninstall:
 	# Uninstall Argo Workflow
@@ -52,12 +45,27 @@ uninstall:
 
 	echo "Uninstallation completed."
 
+k3s-install:
+	# Install k3s
+	curl -sfL https://get.k3s.io | sh -
+	sudo k3s kubectl get node 
+	sudo groupadd k3s
+	sudo usermod -aG k3s `whoami`
+	sudo chown `whoami`:k3s /etc/rancher/k3s/k3s.yaml
+	kubectl get pods
+
+argo-workflow-install:
+	# Install Argo Workflow
+	kubectl create namespace argo
+	kubectl apply -n argo -f https://github.com/argoproj/argo-workflows/releases/download/v3.5.4/install.yaml
+	kubectl patch deployment argo-server --namespace argo --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args", "value": ["server", "--auth-mode=server","--access-control-allow-origin=*"]}]'
+
 docker-registry-install:
 	kubectl apply -f workflows/docker-registry/argo-role.yaml                
 	kubectl apply -f workflows/docker-registry/argo-rolebinding.yaml
 	kubectl create -f workflows/docker-registry/docker-registry.yaml
 
-run:
+run-argo-workflow:
 	# Run Argo Workflow
 	kubectl -n argo port-forward deployment/argo-server 2746:2746
 
@@ -72,23 +80,6 @@ build-container:
 		sudo docker tag $$image_name localhost:30000/$$image_name; \
 		sudo docker push localhost:30000/$$image_name; \
 		done
-
-apply-workflow:
-	for file in workflows/subdomain-enumeration/*.yaml; do \
-		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
-		kubectl apply -f "$$file"; \
-		fi; \
-		done
-	kubectl create -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
-
-delete-workflow:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
-	for file in workflows/subdomain-enumeration/*.yaml; do \
-		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
-		kubectl delete -f "$$file"; \
-		fi; \
-		done
-	kubectl delete -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 restart-k3s:
 	sudo systemctl restart k3s
@@ -109,3 +100,47 @@ minio-install:
 		--from-literal=secretkey=$$MINIO_SECRET_KEY; \
 	kubectl apply -f workflows/minio/minio-deployment.yaml; \
 	kubectl apply -f workflows/minio/minio-service.yaml
+
+apply-share-volume:
+	kubectl apply -f workflows/share-volume/share-pv.yaml
+	kubectl apply -f workflows/share-volume/share-pvc.yaml
+
+delete-share-volume:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	kubectl patch pv shared-pv -p '{"metadata":{"finalizers": []}}' --type=merge
+
+# Workflows
+
+apply-subdomain-enumeration:
+	for file in workflows/subdomain-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	kubectl create -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
+
+delete-subdomain-enumeration:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	for file in workflows/subdomain-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
+
+apply-subdomain-ping-check:
+	for file in workflows/subdomain-ping-check/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-ping-check/subdomain-ping-check.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	kubectl create -f workflows/subdomain-ping-check/subdomain-ping-check.yaml
+
+delete-subdomain-ping-check:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	for file in workflows/subdomain-ping-check/*.yaml; do \
+		if [ "$$file" != "workflows/subdomain-ping-check/subdomain-ping-check.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/subdomain-ping-check/subdomain-ping-check.yaml

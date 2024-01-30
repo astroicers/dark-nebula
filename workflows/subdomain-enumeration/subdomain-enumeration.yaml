@@ -11,7 +11,7 @@ spec:
   arguments:
     parameters:
       - name: base-domain
-        value: "ecloudvalley.com"
+        value: "dcard.tw"
 
   templates:
     - name: main

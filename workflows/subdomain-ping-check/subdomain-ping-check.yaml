@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: subdomain-ping-check-
+spec:
+  entrypoint: main
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+  arguments:
+    parameters:
+      - name: base-subdomain
+        value: '{"subdomains": ["dcard.tw", "www.dcard.tw", "openschool.dcard.tw","to.dcard.tw","egg90.dcard.tw","www.ope78www.dcard.tw","wgg7.dcard.tw"]}'
+
+  templates:
+    - name: main
+      steps:
+        - - name: execute-ping-check
+            templateRef:
+              name: ping-check-template
+              template: ping-check
+            arguments:
+              parameters:
+                - name: base-subdomain
+                  value: "{{workflow.parameters.base-subdomain}}"
