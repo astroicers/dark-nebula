@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: network-scanning-
+spec:
+  entrypoint: main
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+  arguments:
+    parameters:
+      - name: subdomain
+        value: 'www.yahoo.tw'
+
+  templates:
+    - name: main
+      steps:
+        - - name: execute-nmap
+            templateRef:
+              name: nmap-template
+              template: nmap
+            arguments:
+              parameters:
+                - name: subdomain
+                  value: "{{workflow.parameters.subdomain}}"

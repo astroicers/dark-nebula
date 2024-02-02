@@ -1,0 +1,97 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: nmap-template
+spec:
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+  templates:
+    - name: nmap
+      inputs:
+        parameters:
+          - name: subdomain
+      steps:
+        - - name: run-nmap-self
+            template: nmap-self
+            arguments:
+              parameters:
+                - name: subdomain
+                  value: "{{inputs.parameters.subdomain}}"
+        - - name: run-nmap-parser
+            template: nmap-parser
+        - - name: run-nmap-uploader
+            template: nmap-uploader
+            arguments:
+              parameters:
+                - name: subdomain
+                  value: "{{inputs.parameters.subdomain}}"
+
+    - name: nmap-self
+      inputs:
+        parameters:
+          - name: subdomain
+      container:
+        image: astroicers/nmap
+        command: [sh, -c]
+        args:
+          [
+            "nmap -vv --reason -Pn -A --version-all -p 1-10000 -oN /mnt/output/nmap.txt -oX /mnt/output/nmap.xml {{inputs.parameters.subdomain}}",
+          ]
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+
+    - name: nmap-parser
+      script:
+        image: astroicers/nmap
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+        command: [python]
+        source: |
+          import json
+          import xmltodict
+          def xml2json(xml):
+              xml_file = open(xml)
+              xml_content = xml_file.read()
+              xml_file.close()
+              xmljson = json.dumps(xmltodict.parse(xml_content), indent=4, sort_keys=True)
+              return xmljson
+          to_json = xml2json("/mnt/output/nmap.xml")
+          print(to_json)
+          with open("/mnt/output/nmap-parsed.json", "w") as f:
+              f.write(to_json)
+
+    - name: nmap-uploader
+      inputs:
+        parameters:
+          - name: subdomain
+      script:
+        image: astroicers/dark-nebula-uploader
+        command: [python]
+        source: |
+          import redis
+          import json
+          from datetime import datetime
+
+          r = redis.Redis(host='redis', port=6379, db=0)
+
+          with open('/mnt/output/nmap-parsed.json', 'r') as file:
+              json_str = file.read()
+
+          file_content = json.loads(json_str)
+          key_name = "{{pod.name}}"
+
+          file_content['timestamp'] = datetime.now().strftime("%Y%m%d%H%M%S")
+          file_content['workflow'] = "{{workflow.name}}"
+          file_content['pod'] = "{{pod.name}}"
+          file_content['input'] = '{{inputs.parameters.subdomain}}'
+          file_content['type'] = "subdomain-nmap"
+          json_str_updated = json.dumps(file_content)
+
+          r.set(key_name, json_str_updated)
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output

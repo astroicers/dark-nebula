@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check 
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning
 
 help:
 	@echo "Available commands:"
@@ -19,7 +19,8 @@ help:
 	@echo "  make delete-subdomain-enumeration - Deletes subdomain enumeration workflow"
 	@echo "  make apply-subdomain-ping-check - Applies subdomain ping check workflow"
 	@echo "  make delete-subdomain-ping-check - Deletes subdomain ping check workflow"
-
+	@echo "  make apply-network-scanning - Applies network scanning workflow"
+	@echo "  make delete-network-scanning - Deletes network scanning workflow"
 
 .DEFAULT_GOAL := help
 
@@ -151,3 +152,20 @@ delete-subdomain-ping-check:
 		fi; \
 		done
 	kubectl delete -f workflows/subdomain-ping-check/subdomain-ping-check.yaml
+
+apply-network-scanning:
+	for file in workflows/network-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/network-scanning/network-scanning.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	kubectl create -f workflows/network-scanning/network-scanning.yaml
+
+delete-network-scanning:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	for file in workflows/network-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/network-scanning/network-scanning.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/network-scanning/network-scanning.yaml

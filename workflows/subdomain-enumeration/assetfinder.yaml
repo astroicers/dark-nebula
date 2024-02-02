@@ -71,15 +71,6 @@ spec:
           if __name__ == "__main__":
               main()
 
-
-    # - name: assetfinder-uploader
-    #   container:
-    #     image: redis:7.2.4-alpine
-    #     command: [sh, -c]
-    #     args: ["redis-cli -h redis SET {{pod.name}}-$(date +%Y%m%d%H%M%S) \"$(cat /mnt/output/assetfinder-parsed.json)\""]
-    #     volumeMounts:
-    #       - name: shared-output
-    #         mountPath: /mnt/output
     - name: assetfinder-uploader
       inputs:
         parameters:
