@@ -11,33 +11,33 @@ spec:
     - name: nmap
       inputs:
         parameters:
-          - name: subdomain
+          - name: base-subdomain
       steps:
         - - name: run-nmap-self
             template: nmap-self
             arguments:
               parameters:
-                - name: subdomain
-                  value: "{{inputs.parameters.subdomain}}"
+                - name: base-subdomain
+                  value: "{{inputs.parameters.base-subdomain}}"
         - - name: run-nmap-parser
             template: nmap-parser
         - - name: run-nmap-uploader
             template: nmap-uploader
             arguments:
               parameters:
-                - name: subdomain
-                  value: "{{inputs.parameters.subdomain}}"
+                - name: base-subdomain
+                  value: "{{inputs.parameters.base-subdomain}}"
 
     - name: nmap-self
       inputs:
         parameters:
-          - name: subdomain
+          - name: base-subdomain
       container:
         image: astroicers/nmap
         command: [sh, -c]
         args:
           [
-            "nmap -vv --reason -Pn -A --version-all -p 1-10000 -oN /mnt/output/nmap.txt -oX /mnt/output/nmap.xml {{inputs.parameters.subdomain}}",
+            "nmap -vv --reason -sV -Pn -p 80,443,1433,3306,3389,3000,8080-8090,9000-9010 -oN /mnt/output/nmap.txt -oX /mnt/output/nmap.xml {{inputs.parameters.base-subdomain}}",
           ]
         volumeMounts:
           - name: shared-output
@@ -67,7 +67,7 @@ spec:
     - name: nmap-uploader
       inputs:
         parameters:
-          - name: subdomain
+          - name: base-subdomain
       script:
         image: astroicers/dark-nebula-uploader
         command: [python]
@@ -87,8 +87,8 @@ spec:
           file_content['timestamp'] = datetime.now().strftime("%Y%m%d%H%M%S")
           file_content['workflow'] = "{{workflow.name}}"
           file_content['pod'] = "{{pod.name}}"
-          file_content['input'] = '{{inputs.parameters.subdomain}}'
-          file_content['type'] = "subdomain-nmap"
+          file_content['input'] = '{{inputs.parameters.base-subdomain}}'
+          file_content['type'] = "base-subdomain-nmap"
           json_str_updated = json.dumps(file_content)
 
           r.set(key_name, json_str_updated)

@@ -56,7 +56,7 @@ spec:
           reachable = []
           unreachable = []
 
-          for subdomain in subdomains_data.get('subdomains', []):
+          for subdomain in subdomains_data:
               if check_ping(subdomain):
                   reachable.append(subdomain)
               else:

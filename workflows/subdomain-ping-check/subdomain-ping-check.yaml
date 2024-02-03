@@ -11,7 +11,7 @@ spec:
   arguments:
     parameters:
       - name: base-subdomain
-        value: '{"subdomains": ["dcard.tw", "www.dcard.tw", "openschool.dcard.tw","to.dcard.tw","egg90.dcard.tw","www.ope78www.dcard.tw","wgg7.dcard.tw"]}'
+        value: '["dcard.tw", "www.dcard.tw", "openschool.dcard.tw","to.dcard.tw","egg90.dcard.tw","www.ope78www.dcard.tw","wgg7.dcard.tw"]'
 
   templates:
     - name: main

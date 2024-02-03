@@ -1,0 +1,93 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: wappalyzer-template
+spec:
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+  templates:
+    - name: wappalyzer
+      inputs:
+        parameters:
+          - name: base-url
+      steps:
+        - - name: run-wappalyzer-self
+            template: wappalyzer-self
+            arguments:
+              parameters:
+                - name: base-url
+                  value: "{{inputs.parameters.base-url}}"
+        - - name: run-wappalyzer-parser
+            template: wappalyzer-parser
+        - - name: run-wappalyzer-uploader
+            template: wappalyzer-uploader
+            arguments:
+              parameters:
+                - name: base-url
+                  value: "{{inputs.parameters.base-url}}"
+
+    - name: wappalyzer-self
+      inputs:
+        parameters:
+          - name: base-url
+      container:
+        image: astroicers/wappalyzer
+        command: [sh, -c]
+        args:
+          [
+            "wappalyzer {{inputs.parameters.base-url}} > /mnt/output/wappalyzer.json",
+          ]
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+
+    - name: wappalyzer-parser
+      script:
+        image: python:3.12.1-alpine3.19
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+        command: [python]
+        source: |
+          with open('/mnt/output/wappalyzer.json', 'r') as reader:
+              file_contents = reader.read()
+
+          with open('/mnt/output/wappalyzer-parsed.json', 'w') as writer:
+              writer.write(file_contents)
+
+          print("File has been successfully read and written.")
+
+    - name: wappalyzer-uploader
+      inputs:
+        parameters:
+          - name: base-url
+      script:
+        image: astroicers/dark-nebula-uploader
+        command: [python]
+        source: |
+          import redis
+          import json
+          from datetime import datetime
+
+          r = redis.Redis(host='redis', port=6379, db=0)
+
+          with open('/mnt/output/wappalyzer-parsed.json', 'r') as file:
+              json_str = file.read()
+
+          file_content = {}
+          file_content['output'] = json.loads(json_str)
+          key_name = "{{pod.name}}"
+
+          file_content['timestamp'] = datetime.now().strftime("%Y%m%d%H%M%S")
+          file_content['workflow'] = "{{workflow.name}}"
+          file_content['pod'] = "{{pod.name}}"
+          file_content['input'] = '{{inputs.parameters.base-url}}'
+          file_content['type'] = "base-url-wappalyzer"
+          json_str_updated = json.dumps(file_content)
+
+          r.set(key_name, json_str_updated)
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output

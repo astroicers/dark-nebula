@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning
 
 help:
 	@echo "Available commands:"
@@ -21,6 +21,8 @@ help:
 	@echo "  make delete-subdomain-ping-check - Deletes subdomain ping check workflow"
 	@echo "  make apply-network-scanning - Applies network scanning workflow"
 	@echo "  make delete-network-scanning - Deletes network scanning workflow"
+	@echo "  make apply-web-fingerprint-scanning - Applies web fingerprint scanning workflow"
+	@echo "  make delete-web-fingerprint-scanning - Deletes web fingerprint scanning workflow"
 
 .DEFAULT_GOAL := help
 
@@ -169,3 +171,37 @@ delete-network-scanning:
 		fi; \
 		done
 	kubectl delete -f workflows/network-scanning/network-scanning.yaml
+
+apply-web-fingerprint-scanning:
+	for file in workflows/web-fingerprint-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	kubectl create -f workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml
+
+delete-web-fingerprint-scanning:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	for file in workflows/web-fingerprint-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml
+
+apply-web-vuln-scanning:
+	for file in workflows/web-vuln-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/web-vuln-scanning/web-vuln-scanning.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	kubectl create -f workflows/web-vuln-scanning/web-vuln-scanning.yaml
+
+delete-web-vuln-scanning:
+	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
+	for file in workflows/web-vuln-scanning/*.yaml; do \
+		if [ "$$file" != "workflows/web-vuln-scanning/web-vuln-scanning.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/web-vuln-scanning/web-vuln-scanning.yaml

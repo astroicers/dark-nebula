@@ -3,11 +3,10 @@ kind: Service
 metadata:
   name: backend-service
 spec:
+  type: LoadBalancer
   selector:
     app: backend
   ports:
     - protocol: TCP
-      port: 3000
       targetPort: 3000
-  type: LoadBalancer
-  
+      port: 3000

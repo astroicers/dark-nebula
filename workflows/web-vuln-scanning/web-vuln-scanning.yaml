@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Workflow
 metadata:
-  generateName: network-scanning-
+  generateName: web-vuln-scanning-
 spec:
   entrypoint: main
   volumes:
@@ -10,17 +10,17 @@ spec:
         claimName: shared-pvc
   arguments:
     parameters:
-      - name: base-subdomain
-        value: 'tw.yahoo.com'
+      - name: base-url
+        value: 'http://10.43.113.255:8001'
 
   templates:
     - name: main
       steps:
-        - - name: execute-nmap
+        - - name: execute-nikto
             templateRef:
-              name: nmap-template
-              template: nmap
+              name: nikto-template
+              template: nikto
             arguments:
               parameters:
-                - name: base-subdomain
-                  value: "{{workflow.parameters.base-subdomain}}"
+                - name: base-url
+                  value: "{{workflow.parameters.base-url}}"
