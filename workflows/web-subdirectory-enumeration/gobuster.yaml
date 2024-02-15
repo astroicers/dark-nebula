@@ -1,0 +1,101 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: gobuster-template
+spec:
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+    - name: shared-wordlist
+      configMap:
+        name: gobuster-wordlist
+  templates:
+    - name: gobuster
+      inputs:
+        parameters:
+          - name: base-url
+      steps:
+        - - name: run-gobuster-self
+            template: gobuster-self
+            arguments:
+              parameters:
+                - name: base-url
+                  value: "{{inputs.parameters.base-url}}"
+        - - name: run-gobuster-parser
+            template: gobuster-parser
+        - - name: run-gobuster-uploader
+            template: gobuster-uploader
+            arguments:
+              parameters:
+                - name: base-url
+                  value: "{{inputs.parameters.base-url}}"
+
+    - name: gobuster-self
+      inputs:
+        parameters:
+          - name: base-url
+      container:
+        image: ghcr.io/oj/gobuster:latest
+        command: [sh, -c]
+        args:
+          [
+            "./gobuster dir -u {{inputs.parameters.base-url}} -w /mnt/wordlist/common.txt -o /mnt/output/gobuster.json -f json",
+          ]
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+          - name: shared-wordlist
+            mountPath: /mnt/wordlist
+        securityContext:
+          runAsUser: 0
+          privileged: true
+
+    - name: gobuster-parser
+      script:
+        image: python:3.12.1-alpine3.19
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output
+        command: [python]
+        source: |
+          with open('/mnt/output/gobuster.json', 'r') as reader:
+              file_contents = reader.read()
+
+          with open('/mnt/output/gobuster-parsed.json', 'w') as writer:
+              writer.write(file_contents)
+
+          print("File has been successfully read and written.")
+
+    - name: gobuster-uploader
+      inputs:
+        parameters:
+          - name: base-url
+      script:
+        image: astroicers/dark-nebula-uploader
+        command: [python]
+        source: |
+          import redis
+          import json
+          from datetime import datetime
+
+          r = redis.Redis(host='redis', port=6379, db=0)
+
+          with open('/mnt/output/gobuster-parsed.json', 'r') as file:
+              json_str = file.read()
+
+          file_content = {}
+          file_content['output'] = json.loads(json_str)
+          key_name = "{{pod.name}}"
+
+          file_content['timestamp'] = datetime.now().strftime("%Y%m%d%H%M%S")
+          file_content['workflow'] = "{{workflow.name}}"
+          file_content['pod'] = "{{pod.name}}"
+          file_content['input'] = '{{inputs.parameters.base-url}}'
+          file_content['type'] = "base-url-gobuster"
+          json_str_updated = json.dumps(file_content)
+
+          r.set(key_name, json_str_updated)
+        volumeMounts:
+          - name: shared-output
+            mountPath: /mnt/output

@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
 
 help:
 	@echo "Available commands:"
@@ -23,6 +23,10 @@ help:
 	@echo "  make delete-network-scanning - Deletes network scanning workflow"
 	@echo "  make apply-web-fingerprint-scanning - Applies web fingerprint scanning workflow"
 	@echo "  make delete-web-fingerprint-scanning - Deletes web fingerprint scanning workflow"
+	@echo "  make apply-web-vuln-scanning - Applies web vulnerability scanning workflow"
+	@echo "  make delete-web-vuln-scanning - Deletes web vulnerability scanning workflow"
+	@echo "  make apply-web-subdirectory-enumeration - Applies web subdirectory enumeration workflow"
+	@echo "  make delete-web-subdirectory-enumeration - Deletes web subdirectory enumeration workflow"
 
 .DEFAULT_GOAL := help
 
@@ -116,8 +120,8 @@ apply-share-volume:
 	kubectl apply -f workflows/share-volume/share-pvc.yaml
 
 delete-share-volume:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
-	kubectl patch pv shared-pv -p '{"metadata":{"finalizers": []}}' --type=merge
+	kubectl delete pvc shared-pvc
+	kubectl delete pv shared-pv
 
 # Workflows
 
@@ -130,7 +134,6 @@ apply-subdomain-enumeration:
 	kubectl create -f workflows/subdomain-enumeration/subdomain-enumeration.yaml
 
 delete-subdomain-enumeration:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/subdomain-enumeration/*.yaml; do \
 		if [ "$$file" != "workflows/subdomain-enumeration/subdomain-enumeration.yaml" ]; then \
 		kubectl delete -f "$$file"; \
@@ -147,7 +150,6 @@ apply-subdomain-ping-check:
 	kubectl create -f workflows/subdomain-ping-check/subdomain-ping-check.yaml
 
 delete-subdomain-ping-check:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/subdomain-ping-check/*.yaml; do \
 		if [ "$$file" != "workflows/subdomain-ping-check/subdomain-ping-check.yaml" ]; then \
 		kubectl delete -f "$$file"; \
@@ -164,7 +166,6 @@ apply-network-scanning:
 	kubectl create -f workflows/network-scanning/network-scanning.yaml
 
 delete-network-scanning:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/network-scanning/*.yaml; do \
 		if [ "$$file" != "workflows/network-scanning/network-scanning.yaml" ]; then \
 		kubectl delete -f "$$file"; \
@@ -181,7 +182,6 @@ apply-web-fingerprint-scanning:
 	kubectl create -f workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml
 
 delete-web-fingerprint-scanning:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/web-fingerprint-scanning/*.yaml; do \
 		if [ "$$file" != "workflows/web-fingerprint-scanning/web-fingerprint-scanning.yaml" ]; then \
 		kubectl delete -f "$$file"; \
@@ -198,10 +198,32 @@ apply-web-vuln-scanning:
 	kubectl create -f workflows/web-vuln-scanning/web-vuln-scanning.yaml
 
 delete-web-vuln-scanning:
-	kubectl patch pvc shared-pvc -p '{"metadata":{"finalizers": []}}' --type=merge
 	for file in workflows/web-vuln-scanning/*.yaml; do \
 		if [ "$$file" != "workflows/web-vuln-scanning/web-vuln-scanning.yaml" ]; then \
 		kubectl delete -f "$$file"; \
 		fi; \
 		done
 	kubectl delete -f workflows/web-vuln-scanning/web-vuln-scanning.yaml
+
+apply-web-subdirectory-enumeration:
+	for file in workflows/web-subdirectory-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/web-subdirectory-enumeration/web-subdirectory-enumeration.yaml" ]; then \
+		kubectl apply -f "$$file"; \
+		fi; \
+		done
+	@if kubectl get configmap gobuster-wordlist > /dev/null 2>&1; then \
+		echo "ConfigMap 'gobuster-wordlist' already exists."; \
+	else \
+		echo "Creating ConfigMap 'gobuster-wordlist'..."; \
+		kubectl create configmap gobuster-wordlist --from-file=wordlists/wordlists; \
+	fi
+	kubectl create -f workflows/web-subdirectory-enumeration/web-subdirectory-enumeration.yaml
+
+delete-web-subdirectory-enumeration:
+	for file in workflows/web-subdirectory-enumeration/*.yaml; do \
+		if [ "$$file" != "workflows/web-subdirectory-enumeration/web-subdirectory-enumeration.yaml" ]; then \
+		kubectl delete -f "$$file"; \
+		fi; \
+		done
+	kubectl delete -f workflows/web-subdirectory-enumeration/web-subdirectory-enumeration.yaml
+	kubectl delete configmap gobuster-wordlist

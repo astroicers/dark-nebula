@@ -1,0 +1,29 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: web-subdirectory-enumeration-
+spec:
+  entrypoint: main
+  volumes:
+    - name: shared-output
+      persistentVolumeClaim:
+        claimName: shared-pvc
+    - name: shared-wordlist
+      configMap:
+        name: gobuster-wordlist
+  arguments:
+    parameters:
+      - name: base-url
+        value: 'https://github.com'
+
+  templates:
+    - name: main
+      steps:
+        - - name: execute-gobuster
+            templateRef:
+              name: gobuster-template
+              template: gobuster
+            arguments:
+              parameters:
+                - name: base-url
+                  value: "{{workflow.parameters.base-url}}"
