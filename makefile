@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
 
 help:
 	@echo "Available commands:"
@@ -12,7 +12,8 @@ help:
 	@echo "  make redis-install         - Installs Redis"
 	@echo "  make redisinsight-install  - Installs RedisInsight"
 	@echo "  make minio-install         - Installs Minio"
-	@echo "  make website-install       - Installs website"
+	@echo "  make website-backend-install - Installs website backend"
+	@echo "  make website-frontend-install - Installs website frontend"
 	@echo "  make apply-share-volume    - Applies shared volume configuration"
 	@echo "  make delete-share-volume   - Deletes shared volume configuration"
 	@echo "  make apply-subdomain-enumeration - Applies subdomain enumeration workflow"
@@ -109,11 +110,13 @@ minio-install:
 	kubectl apply -f workflows/minio/minio-deployment.yaml; \
 	kubectl apply -f workflows/minio/minio-service.yaml
 
-website-install:
-	kubectl apply -f workflows/website/frontend-deployment.yaml
-	kubectl apply -f workflows/website/frontend-service.yaml
-	kubectl apply -f workflows/website/backend-deployment.yaml
-	kubectl apply -f workflows/website/backend-service.yaml
+website-backend-install:
+	kubectl apply -f workflows/website-backend/backend-deployment.yaml
+	kubectl apply -f workflows/website-backend/backend-service.yaml
+
+website-frontend-install:	
+	kubectl apply -f workflows/website-frontend/frontend-deployment.yaml
+	kubectl apply -f workflows/website-frontend/frontend-service.yaml
 
 apply-share-volume:
 	kubectl apply -f workflows/share-volume/share-pv.yaml

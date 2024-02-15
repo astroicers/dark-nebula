@@ -1,4 +1,3 @@
-# backend-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +14,6 @@ spec:
     spec:
       containers:
       - name: backend
-        image: astroicers/dark-nebula-site-backend:latest
+        image: localhost:30000/dark-nebula-site-backend:latest
         ports:
         - containerPort: 3000

@@ -1,0 +1,5 @@
+docker-registry - 30000
+redis - 30001
+redisinsight - 30002
+frontend - 30003
+backend - 30004
