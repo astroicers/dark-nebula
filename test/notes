@@ -3,3 +3,5 @@ redis - 30001
 redisinsight - 30002
 frontend - 30003
 backend - 30004
+
+kubectl delete service backend-service && kubectl delete deployment backend-deployment

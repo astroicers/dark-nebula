@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-backend-build website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
 
 help:
 	@echo "Available commands:"
@@ -13,6 +13,7 @@ help:
 	@echo "  make redisinsight-install  - Installs RedisInsight"
 	@echo "  make minio-install         - Installs Minio"
 	@echo "  make website-backend-install - Installs website backend"
+	@echo "  make website-backend-build - Builds website backend"
 	@echo "  make website-frontend-install - Installs website frontend"
 	@echo "  make apply-share-volume    - Applies shared volume configuration"
 	@echo "  make delete-share-volume   - Deletes shared volume configuration"
@@ -113,6 +114,12 @@ minio-install:
 website-backend-install:
 	kubectl apply -f workflows/website-backend/backend-deployment.yaml
 	kubectl apply -f workflows/website-backend/backend-service.yaml
+
+website-backend-build:
+	git clone https://github.com/astroicers/dark-nebula-backend.git dark-nebula-backend; \
+	sudo docker build -t dark-nebula-backend -f dark-nebula-backend/Dockerfile ./dark-nebula-backend; \
+	sudo docker tag dark-nebula-backend localhost:30000/dark-nebula-backend; \
+	sudo docker push localhost:30000/dark-nebula-backend; \
 
 website-frontend-install:	
 	kubectl apply -f workflows/website-frontend/frontend-deployment.yaml
