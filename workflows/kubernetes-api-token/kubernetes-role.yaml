@@ -4,6 +4,6 @@ metadata:
   namespace: default
   name: api-access-role
 rules:
-- apiGroups: [""]
-  resources: ["pods", "services", "configmaps", "secrets"]
+- apiGroups: ["argoproj.io", ""]
+  resources: ["pods", "services", "configmaps", "secrets", "workflowtemplates"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
