@@ -12,6 +12,7 @@ spec:
       labels:
         app: backend
     spec:
+      serviceAccountName: k8s-service-account
       containers:
       - name: backend
         image: localhost:30000/dark-nebula-backend

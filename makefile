@@ -1,4 +1,4 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-backend-build website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-backend-build website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration kubernetes-api-token-install
 
 help:
 	@echo "Available commands:"
@@ -12,6 +12,7 @@ help:
 	@echo "  make redis-install         - Installs Redis"
 	@echo "  make redisinsight-install  - Installs RedisInsight"
 	@echo "  make minio-install         - Installs Minio"
+	@echo "  make kubernetes-api-token-install - Installs Kubernetes API token"
 	@echo "  make website-backend-install - Installs website backend"
 	@echo "  make website-backend-build - Builds website backend"
 	@echo "  make website-frontend-install - Installs website frontend"
@@ -110,6 +111,13 @@ minio-install:
 		--from-literal=secretkey=$$MINIO_SECRET_KEY; \
 	kubectl apply -f workflows/minio/minio-deployment.yaml; \
 	kubectl apply -f workflows/minio/minio-service.yaml
+
+kubernetes-api-token-install:
+	kubectl apply -f workflows/kubernetes-api-token/kubernetes-api-token.yaml
+	kubectl apply -f workflows/kubernetes-api-token/kubernetes-role.yaml
+	kubectl apply -f workflows/kubernetes-api-token/kubernetes-rolebinding.yaml
+	kubectl apply -f workflows/kubernetes-api-token/kubernetes-secret.yaml
+	kubectl get secret $(kubectl get serviceaccount k8s-service-account -n default -o jsonpath="{.secrets[0].name}") -n default -o jsonpath="{.data.token}" | base64 --decode
 
 website-backend-install:
 	kubectl apply -f workflows/website-backend/backend-deployment.yaml
