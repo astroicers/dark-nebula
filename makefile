@@ -1,8 +1,8 @@
-.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install minio-install apply-share-volume delete-share-volume website-backend-install website-backend-build website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration kubernetes-api-token-install
+.PHONY: help install uninstall k3s-install argo-workflow-install docker-registry-install run-argo-workflow show-pods build-container apply-workflow delete-workflow restart-k3s redis-install redisinsight-install apply-share-volume delete-share-volume website-backend-install website-backend-build website-frontend-install apply-subdomain-enumeration delete-subdomain-enumeration apply-subdomain-ping-check delete-subdomain-ping-check apply-network-scanning delete-network-scanning apply-web-fingerprint-scanning delete-web-fingerprint-scanning apply-web-vuln-scanning delete-web-vuln-scanning apply-web-subdirectory-enumeration delete-web-subdirectory-enumeration kubernetes-api-token-install
 
 help:
 	@echo "Available commands:"
-	@echo "  make install               - Installs k3s, Argo, Docker registry, Redis, RedisInsight, and Minio"
+	@echo "  make install               - Installs k3s, Argo, Docker registry, Redis and RedisInsight"
 	@echo "  make uninstall             - Uninstalls k3s and Argo Workflow"
 	@echo "  make docker-registry-install - Installs Docker registry"
 	@echo "  make run-argo-workflow     - Runs Argo workflow"
@@ -11,11 +11,10 @@ help:
 	@echo "  make restart-k3s           - Restarts k3s service"
 	@echo "  make redis-install         - Installs Redis"
 	@echo "  make redisinsight-install  - Installs RedisInsight"
-	@echo "  make minio-install         - Installs Minio"
 	@echo "  make kubernetes-api-token-install - Installs Kubernetes API token"
-	@echo "  make website-backend-install - Installs website backend"
-	@echo "  make website-backend-build - Builds website backend"
-	@echo "  make website-frontend-install - Installs website frontend"
+	# @echo "  make website-backend-install - Installs website backend"
+	# @echo "  make website-backend-build - Builds website backend"
+	# @echo "  make website-frontend-install - Installs website frontend"
 	@echo "  make apply-share-volume    - Applies shared volume configuration"
 	@echo "  make delete-share-volume   - Deletes shared volume configuration"
 	@echo "  make apply-subdomain-enumeration - Applies subdomain enumeration workflow"
@@ -33,7 +32,7 @@ help:
 
 .DEFAULT_GOAL := help
 
-install: k3s-install argo-workflow-install docker-registry-install redis-install redisinsight-install minio-install website-install apply-share-volume
+install: k3s-install argo-workflow-install docker-registry-install redis-install redisinsight-install apply-share-volume # website-install 
 
 uninstall:
 	# Uninstall Argo Workflow
@@ -72,9 +71,9 @@ argo-workflow-install:
 	kubectl patch deployment argo-server --namespace argo --type='json' -p='[{"op": "replace", "path": "/spec/template/spec/containers/0/args", "value": ["server", "--auth-mode=server","--access-control-allow-origin=*"]}]'
 
 docker-registry-install:
-	kubectl apply -f workflows/docker-registry/argo-role.yaml                
-	kubectl apply -f workflows/docker-registry/argo-rolebinding.yaml
-	kubectl create -f workflows/docker-registry/docker-registry.yaml
+	kubectl apply -f sidecar/docker-registry/argo-role.yaml                
+	kubectl apply -f sidecar/docker-registry/argo-rolebinding.yaml
+	kubectl create -f sidecar/docker-registry/docker-registry.yaml
 
 run-argo-workflow:
 	# Run Argo Workflow
@@ -84,58 +83,50 @@ show-pods:
 	kubectl -n argo get pods
 
 build-container:
-	for file in dockerfiles/*.Dockerfile; do \
-		base_name=$$(basename $$file .Dockerfile); \
+	for file in tools/*/Dockerfile; do \
+		dir_name=$$(dirname "$$file"); \
+		base_name=$$(basename "$$dir_name"); \
 		image_name="$$base_name-local"; \
-		sudo docker build -t $$image_name -f $$file .; \
+		sudo docker build -t $$image_name -f $$file $$dir_name; \
 		sudo docker tag $$image_name localhost:30000/$$image_name; \
 		sudo docker push localhost:30000/$$image_name; \
-		done
+	done
 
 restart-k3s:
 	sudo systemctl restart k3s
 
 redis-install:
-	kubectl apply -f workflows/redis/redis-deployment.yaml
-	kubectl apply -f workflows/redis/redis-service.yaml
+	kubectl apply -f sidecar/redis/redis-deployment.yaml
+	kubectl apply -f sidecar/redis/redis-service.yaml
 
 redisinsight-install:
-	kubectl apply -f workflows/redisinsight/redisinsight-deployment.yaml
-	kubectl apply -f workflows/redisinsight/redisinsight-service.yaml
-
-minio-install:
-	@export MINIO_ACCESS_KEY=$$(openssl rand -base64 12); \
-	export MINIO_SECRET_KEY=$$(openssl rand -base64 24); \
-	kubectl create secret generic minio-secret \
-		--from-literal=accesskey=$$MINIO_ACCESS_KEY \
-		--from-literal=secretkey=$$MINIO_SECRET_KEY; \
-	kubectl apply -f workflows/minio/minio-deployment.yaml; \
-	kubectl apply -f workflows/minio/minio-service.yaml
+	kubectl apply -f sidecar/redisinsight/redisinsight-deployment.yaml
+	kubectl apply -f sidecar/redisinsight/redisinsight-service.yaml
 
 kubernetes-api-token-install:
-	kubectl apply -f workflows/kubernetes-api-token/kubernetes-api-token.yaml
-	kubectl apply -f workflows/kubernetes-api-token/kubernetes-role.yaml
-	kubectl apply -f workflows/kubernetes-api-token/kubernetes-rolebinding.yaml
-	kubectl apply -f workflows/kubernetes-api-token/kubernetes-secret.yaml
+	kubectl apply -f common/kubernetes-api-token/kubernetes-api-token.yaml
+	kubectl apply -f common/kubernetes-api-token/kubernetes-role.yaml
+	kubectl apply -f common/kubernetes-api-token/kubernetes-rolebinding.yaml
+	kubectl apply -f common/kubernetes-api-token/kubernetes-secret.yaml
 	kubectl get secret $(kubectl get serviceaccount k8s-service-account -n default -o jsonpath="{.secrets[0].name}") -n default -o jsonpath="{.data.token}" | base64 --decode
 
-website-backend-install:
-	kubectl apply -f workflows/website-backend/backend-deployment.yaml
-	kubectl apply -f workflows/website-backend/backend-service.yaml
+# website-backend-install:
+# 	kubectl apply -f sidecar/website-backend/backend-deployment.yaml
+# 	kubectl apply -f sidecar/website-backend/backend-service.yaml
 
-website-backend-build:
-	git clone https://github.com/astroicers/dark-nebula-backend.git dark-nebula-backend; \
-	sudo docker build -t dark-nebula-backend -f dark-nebula-backend/Dockerfile ./dark-nebula-backend; \
-	sudo docker tag dark-nebula-backend localhost:30000/dark-nebula-backend; \
-	sudo docker push localhost:30000/dark-nebula-backend; \
+# website-backend-build:
+# 	git clone https://github.com/astroicers/dark-nebula-backend.git dark-nebula-backend; \
+# 	sudo docker build -t dark-nebula-backend -f dark-nebula-backend/Dockerfile ./dark-nebula-backend; \
+# 	sudo docker tag dark-nebula-backend localhost:30000/dark-nebula-backend; \
+# 	sudo docker push localhost:30000/dark-nebula-backend; \
 
-website-frontend-install:	
-	kubectl apply -f workflows/website-frontend/frontend-deployment.yaml
-	kubectl apply -f workflows/website-frontend/frontend-service.yaml
+# website-frontend-install:	
+# 	kubectl apply -f sidecar/website-frontend/frontend-deployment.yaml
+# 	kubectl apply -f sidecar/website-frontend/frontend-service.yaml
 
 apply-share-volume:
-	kubectl apply -f workflows/share-volume/share-pv.yaml
-	kubectl apply -f workflows/share-volume/share-pvc.yaml
+	kubectl apply -f common/share-volume/share-pv.yaml
+	kubectl apply -f common/share-volume/share-pvc.yaml
 
 delete-share-volume:
 	kubectl delete pvc shared-pvc
