@@ -129,8 +129,8 @@ apply-share-volume:
 	kubectl apply -f common/share-volume/share-pvc.yaml
 
 delete-share-volume:
-	kubectl delete pvc shared-pvc
-	kubectl delete pv shared-pv
+	kubectl delete pvc shared-pvc --force --grace-period=0 
+	kubectl delete pv shared-pv --force --grace-period=0 
 
 # Workflows
 
